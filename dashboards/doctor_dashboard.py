@@ -3,7 +3,6 @@ import streamlit as st
 from components.sidebar import sidebar
 from components.charts import patient_line_chart, appointment_donut_chart
 import matplotlib.pyplot as plt
-
 # All categories and their modules
 CATEGORIES = {
     "A - Patient Clinical Data": {
@@ -353,13 +352,27 @@ def show_category_view():
 
 def show_module_detail():
     code, name, desc, tables, records = st.session_state.selected_module
+
     cat_key = st.session_state.selected_category
-    
+
     # Breadcrumb
     st.markdown(f"Category {cat_key.split('-')[0].strip()} > {name}")
     st.markdown(f"# {name}")
     st.markdown(f"*{desc}*")
-    
+
+    # ── Module-specific full UI ──────────────────────────────────────
+    if code == "E3":
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        from modules.module_E3.patient_view import render_patient_module as e3_render
+        e3_render()
+        st.divider()
+        if st.button("⬅ Back to Modules"):
+            st.session_state.view = "category"
+            st.rerun()
+        return
+
+    # ── Generic fallback for all other modules ───────────────────────
     # Tabs
     tab = st.radio("", ["🏠 Home", "🔗 ER Diagram", "📋 Tables", "🔍 SQL Query", "⚡ Triggers", "📊 Output"], horizontal=True)
     st.divider()
