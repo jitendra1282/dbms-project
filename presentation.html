@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 27 — Cardiac ICU Monitoring Database System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* === RESET & ROOT === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0b1120;
+    --surface: rgba(15, 25, 50, 0.85);
+    --card: rgba(20, 35, 70, 0.6);
+    --primary: #3b82f6;
+    --primary-glow: rgba(59, 130, 246, 0.25);
+    --accent: #06d6a0;
+    --accent-glow: rgba(6, 214, 160, 0.2);
+    --danger: #ef4444;
+    --danger-glow: rgba(239, 68, 68, 0.15);
+    --warning: #f59e0b;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --border: rgba(59, 130, 246, 0.15);
+    --radius: 16px;
+    --font: 'Inter', -apple-system, sans-serif;
+  }
+  html { font-size: 16px; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* === BACKGROUND EFFECTS === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(59,130,246,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(6,214,160,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* === SLIDE CONTAINER === */
+  .deck { position: relative; width: 100%; height: 100vh; }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem 5rem;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+    overflow-y: auto;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* === TYPOGRAPHY === */
+  .slide-number {
+    position: absolute;
+    top: 2rem;
+    right: 3rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--primary);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.9rem;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+    background: var(--primary-glow);
+  }
+  h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -1px;
+    margin-bottom: 0.8rem;
+  }
+  h1 .gradient {
+    background: linear-gradient(135deg, #3b82f6 0%, #06d6a0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: #f1f5f9;
+  }
+  h2 .hl { color: var(--primary); }
+  h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 0.6rem;
+  }
+  p, li {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-dim);
+  }
+  p.lead { font-size: 1.15rem; max-width: 640px; }
+  ul { list-style: none; padding: 0; }
+  ul li { padding-left: 1.5rem; position: relative; margin-bottom: 0.5rem; }
+  ul li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* === CARD GRID === */
+  .grid { display: grid; gap: 1.2rem; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    backdrop-filter: blur(12px);
+    transition: transform 0.25s, box-shadow 0.25s;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+  .card .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    background: var(--primary-glow);
+    border: 1px solid var(--border);
+  }
+  .card .icon.green { background: var(--accent-glow); border-color: rgba(6,214,160,0.2); }
+  .card .icon.red { background: var(--danger-glow); border-color: rgba(239,68,68,0.2); }
+  .card .icon.yellow { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.2); }
+  .card h3 { margin-bottom: 0.4rem; }
+  .card p { font-size: 0.9rem; }
+
+  /* === CODE BLOCK === */
+  .code-block {
+    background: rgba(10, 18, 40, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #94a3b8;
+    white-space: pre;
+  }
+  .code-block .kw { color: #c084fc; }
+  .code-block .fn { color: #60a5fa; }
+  .code-block .str { color: #34d399; }
+  .code-block .cm { color: #475569; font-style: italic; }
+  .code-block .num { color: #f59e0b; }
+  .code-block .op { color: #94a3b8; }
+
+  /* === BADGE === */
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .badge.blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .badge.green { background: rgba(6,214,160,0.15); color: #34d399; }
+  .badge.red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge.yellow { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+  /* === ER DIAGRAM / SCHEMA === */
+  .schema-box {
+    background: rgba(10, 18, 40, 0.8);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+  .schema-box .entity {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.6rem;
+    display: inline-block;
+    min-width: 220px;
+    vertical-align: top;
+    margin-right: 0.8rem;
+  }
+  .entity .ename {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .entity .field {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-family: 'SF Mono', monospace;
+    padding: 0.15rem 0;
+  }
+  .entity .field .pk { color: #f59e0b; font-weight: 600; }
+  .entity .field .type { color: #64748b; }
+
+  /* === ARCHITECTURE DIAGRAM === */
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .arch-node {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    min-width: 180px;
+    backdrop-filter: blur(12px);
+    transition: transform 0.3s;
+  }
+  .arch-node:hover { transform: scale(1.05); }
+  .arch-node .a-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .arch-node .a-title { font-weight: 700; font-size: 1.05rem; color: #f1f5f9; }
+  .arch-node .a-sub { font-size: 0.82rem; color: var(--text-dim); margin-top: 0.3rem; }
+  .arch-arrow { font-size: 1.8rem; color: var(--primary); opacity: 0.5; }
+
+  /* === PROGRESS BAR === */
+  .progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width 0.4s ease;
+    z-index: 100;
+  }
+
+  /* === NAV === */
+  .nav {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 3rem;
+    display: flex;
+    gap: 0.6rem;
+    z-index: 100;
+  }
+  .nav button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    backdrop-filter: blur(10px);
+  }
+  .nav button:hover { background: var(--primary-glow); }
+
+  /* === HEARTBEAT ANIMATION (title slide) === */
+  @keyframes pulse {
+    0%,100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(239,68,68,0.4)); }
+    50% { transform: scale(1.15); filter: drop-shadow(0 0 20px rgba(239,68,68,0.7)); }
+  }
+  .heartbeat { display: inline-block; animation: pulse 1.2s ease-in-out infinite; }
+
+  /* === SCORING TABLE === */
+  .score-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 0.88rem;
+  }
+  .score-table thead th {
+    background: rgba(59,130,246,0.1);
+    color: #93c5fd;
+    padding: 0.8rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .score-table tbody td {
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .score-table tbody tr:hover { background: rgba(59,130,246,0.05); }
+
+  /* === TWO COLUMN LAYOUT === */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  .two-col-wide { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 2rem; align-items: start; }
+
+  /* === TIMELINE === */
+  .timeline { position: relative; padding-left: 2rem; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+    border-radius: 2px;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+    padding-left: 1rem;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+  }
+
+  /* === FOOTER BRAND === */
+  .footer-brand {
+    position: absolute;
+    bottom: 2rem;
+    left: 5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+    letter-spacing: 1px;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .slide { padding: 2rem 2rem; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.5rem; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .two-col, .two-col-wide { grid-template-columns: 1fr; }
+    .arch-flow { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+<!-- ==================== SLIDE 1 — TITLE ==================== -->
+<div class="slide active" data-slide="1">
+  <span class="slide-number">01 / 10</span>
+  <div class="tag">DBMS Project — Module 27</div>
+  <h1>
+    <span class="heartbeat">❤️</span> Cardiac ICU<br>
+    <span class="gradient">Monitoring Database System</span>
+  </h1>
+  <p class="lead" style="margin-top:1rem;">
+    A specialized real-time clinical decision support system for cardiac parameter tracking,
+    arrhythmia detection, and automated risk scoring in the Intensive Care Unit.
+  </p>
+  <div style="margin-top:2.5rem; display:flex; gap:0.8rem; flex-wrap:wrap;">
+    <span class="badge blue">FastAPI</span>
+    <span class="badge green">MongoDB</span>
+    <span class="badge yellow">Streamlit</span>
+    <span class="badge red">Real-Time Alerts</span>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 2 — PROJECT OVERVIEW ==================== -->
+<div class="slide" data-slide="2">
+  <span class="slide-number">02 / 10</span>
+  <div class="tag">Overview</div>
+  <h2>Project <span class="hl">Overview</span></h2>
+  <div class="grid grid-2">
+    <div>
+      <p style="margin-bottom:1.2rem;">
+        A <strong style="color:#f1f5f9">Clinical Decision Support System (CDSS)</strong> designed for Cardiac ICU environments.
+        Instead of passive data storage, this system <em>actively interprets</em> incoming vitals to assist in early detection
+        of life-threatening cardiac events.
+      </p>
+      <ul>
+        <li>Real-time cardiac parameter ingestion &amp; storage</li>
+        <li>Automated arrhythmia detection with rule-based engines</li>
+        <li>HEART, TIMI &amp; GRACE risk-scoring on every telemetry entry</li>
+        <li>Hemodynamic stability assessment (Stable / Unstable / Critical)</li>
+        <li>24-hour time-series analysis for trend visualization</li>
+        <li>STEMI recognition &amp; Heart Failure severity indexing</li>
+      </ul>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg, rgba(59,130,246,0.10) 0%, rgba(6,214,160,0.08) 100%);">
+      <h3 style="color:var(--accent);">Why This Matters</h3>
+      <p style="margin-bottom:0.8rem;">
+        In ICU settings, <strong style="color:#f1f5f9">minutes decide outcomes</strong>. Early STEMI detection can reduce
+        door-to-balloon time and significantly improve patient survival rates.
+      </p>
+      <p>
+        This system doesn't just <em>store</em> data — it <strong style="color:#f1f5f9">interprets</strong> it,
+        providing risk scores and alerts the moment vitals are recorded.
+      </p>
+      <div style="margin-top:1rem;padding-top:0.8rem;border-top:1px solid var(--border);">
+        <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.3rem;">Key Metric</div>
+        <div style="font-size:1.8rem;font-weight:800;color:var(--danger);">< 90 min</div>
+        <div style="font-size:0.82rem;color:var(--text-dim);">Target Door-to-Balloon Time for STEMI</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 3 — SYSTEM ARCHITECTURE ==================== -->
+<div class="slide" data-slide="3">
+  <span class="slide-number">03 / 10</span>
+  <div class="tag">Architecture</div>
+  <h2>System <span class="hl">Architecture</span></h2>
+  <p style="margin-bottom:2rem;max-width:700px;">
+    A modern full-stack application designed with clean separation of concerns —
+    Presentation, Business Logic, and Data layers.
+  </p>
+  <div class="arch-flow">
+    <div class="arch-node" style="border-color:rgba(251,191,36,0.3);">
+      <div class="a-icon">🖥️</div>
+      <div class="a-title">Streamlit Dashboard</div>
+      <div class="a-sub">Frontend — UI / Charts</div>
+      <div style="margin-top:0.6rem;"><span class="badge yellow">Python</span></div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node" style="border-color:rgba(59,130,246,0.3);">
+      <div class="a-icon">⚡</div>
+      <div class="a-title">FastAPI Backend</div>
+      <div class="a-sub">REST API / Business Logic</div>
+      <div style="margin-top:0.6rem;"><span class="badge blue">Async Python</span></div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-node" style="border-color:rgba(6,214,160,0.3);">
+      <div class="a-icon">🍃</div>
+      <div class="a-title">MongoDB Atlas</div>
+      <div class="a-sub">NoSQL — Document Store</div>
+      <div style="margin-top:0.6rem;"><span class="badge green">Motor (Async)</span></div>
+    </div>
+  </div>
+  <div class="grid grid-3" style="margin-top:2rem;">
+    <div class="card">
+      <h3 style="font-size:0.9rem;">📡 API Layer</h3>
+      <p style="font-size:0.82rem;">POST /telemetry, GET /assessment, GET /timeseries, GET /arrhythmias</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;">🧠 Service Layer</h3>
+      <p style="font-size:0.82rem;">services.py — Arrhythmia detection, scoring engines, hemodynamic assessment</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;">💾 Data Layer</h3>
+      <p style="font-size:0.82rem;">database.py — Motor async driver, aggregation pipelines, CRUD operations</p>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 4 — DATA MODELING / MONGODB ==================== -->
+<div class="slide" data-slide="4">
+  <span class="slide-number">04 / 10</span>
+  <div class="tag">Data Modeling</div>
+  <h2>Why <span class="hl">MongoDB</span>?</h2>
+  <div class="two-col">
+    <div>
+      <p style="margin-bottom:1.2rem;">
+        Medical data is inherently <strong style="color:#f1f5f9">semi-structured</strong>. ECG rhythms, echocardiogram findings,
+        and lab results vary between patients. MongoDB's flexible document model handles this naturally.
+      </p>
+      <div class="card" style="margin-bottom:1rem;">
+        <h3 style="color:var(--accent);font-size:0.9rem;">🔑 Key Design Decision</h3>
+        <p style="font-size:0.85rem;">
+          <strong style="color:#f1f5f9">ScoringResult is embedded</strong> inside the CardiacTelemetry document — not in a separate collection.
+          This means a single read returns vitals + risk scores together, avoiding expensive joins.
+        </p>
+      </div>
+      <ul>
+        <li>Flexible schema for varying clinical data</li>
+        <li>Embedded documents eliminate SQL JOINs</li>
+        <li>Native aggregation pipelines for analytics</li>
+        <li>Time-series optimized queries</li>
+        <li>Horizontal scaling for high-throughput ICU data</li>
+      </ul>
+    </div>
+    <div>
+      <div class="code-block"><span class="cm">// CardiacTelemetry Document</span>
+{
+  <span class="str">"patient_id"</span>: <span class="str">"P-10042"</span>,
+  <span class="str">"ecg_rhythm"</span>: <span class="str">"ST-elevation"</span>,
+  <span class="str">"heart_rate"</span>: <span class="num">112</span>,
+  <span class="str">"systolic_bp"</span>: <span class="num">85</span>,
+  <span class="str">"diastolic_bp"</span>: <span class="num">55</span>,
+  <span class="str">"troponin_level"</span>: <span class="num">0.52</span>,
+  <span class="str">"bnp_level"</span>: <span class="num">620.0</span>,
+  <span class="str">"echo_findings"</span>: <span class="str">"EF 30%"</span>,
+  <span class="str">"scoring"</span>: {
+    <span class="str">"heart_score"</span>: <span class="num">8</span>,
+    <span class="str">"timi_score"</span>: <span class="num">5</span>,
+    <span class="str">"grace_score"</span>: <span class="num">168</span>,
+    <span class="str">"risk_level"</span>: <span class="str">"High"</span>,
+    <span class="str">"stemi_flag"</span>: <span class="kw">true</span>,
+    <span class="str">"hf_severity"</span>: <span class="str">"Moderate"</span>
+  },
+  <span class="str">"hemodynamic_status"</span>: <span class="str">"Unstable"</span>,
+  <span class="str">"timestamp"</span>: <span class="str">"2026-03-17T..."</span>
+}</div>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 5 — KEY ENTITIES ==================== -->
+<div class="slide" data-slide="5">
+  <span class="slide-number">05 / 10</span>
+  <div class="tag">Entities</div>
+  <h2>Key <span class="hl">Entities</span></h2>
+  <div class="grid grid-4">
+    <div class="card">
+      <div class="icon">👤</div>
+      <h3>Patient</h3>
+      <p style="font-size:0.82rem; margin-bottom:0.5rem;">Core identity with demographics, medical history, and risk factors.</p>
+      <div class="field" style="font-size:0.75rem;font-family:monospace;color:var(--text-dim);">
+        patient_id · name · age<br>
+        risk_factors[] · history_notes
+      </div>
+    </div>
+    <div class="card">
+      <div class="icon green">📊</div>
+      <h3>CardiacTelemetry</h3>
+      <p style="font-size:0.82rem; margin-bottom:0.5rem;">Each vital-signs reading with embedded scoring results.</p>
+      <div class="field" style="font-size:0.75rem;font-family:monospace;color:var(--text-dim);">
+        ecg_rhythm · heart_rate<br>
+        BP · troponin · BNP<br>
+        scoring{} · timestamp
+      </div>
+    </div>
+    <div class="card">
+      <div class="icon red">🚨</div>
+      <h3>ArrhythmiaAlert</h3>
+      <p style="font-size:0.82rem; margin-bottom:0.5rem;">Detected cardiac rhythm anomalies with severity levels.</p>
+      <div class="field" style="font-size:0.75rem;font-family:monospace;color:var(--text-dim);">
+        type · severity<br>
+        detection_rule<br>
+        timestamp
+      </div>
+    </div>
+    <div class="card">
+      <div class="icon yellow">💓</div>
+      <h3>Hemodynamics</h3>
+      <p style="font-size:0.82rem; margin-bottom:0.5rem;">Blood pressure and heart rate stability assessments.</p>
+      <div class="field" style="font-size:0.75rem;font-family:monospace;color:var(--text-dim);">
+        systolic_bp · diastolic_bp<br>
+        heart_rate · status<br>
+        (Stable|Unstable|Critical)
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:1.5rem;display:flex;align-items:center;gap:1.5rem;padding:1.2rem 1.5rem;">
+    <div style="font-size:0.85rem;color:var(--text-dim);flex:1;">
+      <strong style="color:#f1f5f9;">Pydantic Models</strong> enforce strict validation — heart rate must be 20–300 BPM,
+      Killip class 1–4, troponin ≥ 0. Invalid data is rejected at the API boundary before it ever reaches MongoDB.
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+      <span class="badge blue">CardiacParameterCreate</span>
+      <span class="badge green">ScoringResult</span>
+      <span class="badge red">ArrhythmiaAlert</span>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 6 — CLINICAL SCORING ==================== -->
+<div class="slide" data-slide="6">
+  <span class="slide-number">06 / 10</span>
+  <div class="tag">Scoring</div>
+  <h2>Clinical <span class="hl">Scoring Systems</span></h2>
+  <p style="margin-bottom:1.5rem;max-width:700px;">
+    Three gold-standard cardiac risk assessment algorithms are computed automatically on every telemetry entry.
+  </p>
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th style="width:140px;">Score</th>
+        <th style="width:80px;">Range</th>
+        <th>Components</th>
+        <th style="width:200px;">Risk Stratification</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color:#f1f5f9;">HEART</strong></td>
+        <td><span class="badge blue">0–10</span></td>
+        <td><strong style="color:#cbd5e1;">H</strong>istory · <strong style="color:#cbd5e1;">E</strong>CG · <strong style="color:#cbd5e1;">A</strong>ge · <strong style="color:#cbd5e1;">R</strong>isk Factors · <strong style="color:#cbd5e1;">T</strong>roponin — each scored 0–2</td>
+        <td>0–3 Low · 4–6 Moderate · 7+ High</td>
+      </tr>
+      <tr>
+        <td><strong style="color:#f1f5f9;">TIMI</strong></td>
+        <td><span class="badge green">0–7</span></td>
+        <td>Age ≥65, ≥3 CAD factors, Known stenosis, ASA use, ≥2 angina/24h, ST deviation, Elevated troponin</td>
+        <td>0–2 Low · 3–4 Moderate · 5+ High</td>
+      </tr>
+      <tr>
+        <td><strong style="color:#f1f5f9;">GRACE</strong></td>
+        <td><span class="badge yellow">0–372</span></td>
+        <td>Age, Heart rate, Systolic BP, Creatinine, Cardiac arrest, ST deviation, Troponin, Killip class</td>
+        <td>&lt;109 Low · 109–140 Moderate · &gt;140 High</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="grid grid-2" style="margin-top:1.2rem;">
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--accent);">Combined Risk Level</h3>
+      <p style="font-size:0.85rem;">
+        If <strong style="color:#f1f5f9;">any</strong> score exceeds its "High" threshold (HEART ≥ 7, TIMI ≥ 5, GRACE ≥ 140),
+        the overall risk level is flagged as <span class="badge red">HIGH</span> — triggering priority alerts.
+      </p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.9rem;color:var(--warning);">Heart Failure Severity</h3>
+      <p style="font-size:0.85rem;">
+        HF severity is independently assessed via BNP levels and Killip classification:
+        Killip IV or BNP &gt; 900 → <span class="badge red">Severe</span>,
+        Killip III or BNP &gt; 400 → <span class="badge yellow">Moderate</span>.
+      </p>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 7 — ADVANCED FEATURES ==================== -->
+<div class="slide" data-slide="7">
+  <span class="slide-number">07 / 10</span>
+  <div class="tag">Advanced Features</div>
+  <h2>STEMI Recognition &amp; <span class="hl">Arrhythmia Detection</span></h2>
+  <div class="two-col-wide">
+    <div>
+      <div class="card" style="border-left:3px solid var(--danger);margin-bottom:1.2rem;">
+        <h3 style="color:var(--danger);font-size:1rem;">🚨 STEMI Recognition — Critical</h3>
+        <p style="font-size:0.88rem;margin-bottom:0.8rem;">
+          ST-Elevation Myocardial Infarction is the #1 time-critical cardiac emergency.
+          The system auto-detects STEMI by pattern-matching the ECG rhythm field.
+        </p>
+        <div class="code-block" style="font-size:0.78rem;"><span class="cm"># services.py — STEMI Detection Rule</span>
+<span class="kw">if</span> <span class="str">"st-elevation"</span> <span class="kw">in</span> ecg_lower <span class="kw">or</span> <span class="str">"stemi"</span> <span class="kw">in</span> ecg_lower:
+    alerts.append(ArrhythmiaAlert(
+        type=<span class="str">"STEMI"</span>,
+        severity=<span class="str">"Critical"</span>,
+        detection_rule=<span class="str">"Immediate catheterization required"</span>
+    ))</div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 style="font-size:0.85rem;">⚡ Tachycardia</h3>
+          <p style="font-size:0.8rem;">HR &gt; 100 → Medium<br>HR &gt; 150 → High</p>
+        </div>
+        <div class="card">
+          <h3 style="font-size:0.85rem;">🐢 Bradycardia</h3>
+          <p style="font-size:0.8rem;">HR &lt; 60 → Medium<br>HR &lt; 40 → High</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:1rem;">Detection Rules Engine</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <h3 style="font-size:0.9rem;color:var(--danger);">STEMI</h3>
+          <p style="font-size:0.82rem;">ECG contains "ST-elevation" → <span class="badge red">Critical</span></p>
+        </div>
+        <div class="timeline-item">
+          <h3 style="font-size:0.9rem;color:var(--warning);">Atrial Fibrillation</h3>
+          <p style="font-size:0.82rem;">ECG rhythm matches "AFib" → <span class="badge yellow">High</span></p>
+        </div>
+        <div class="timeline-item">
+          <h3 style="font-size:0.9rem;color:var(--danger);">V-Tach / V-Fib</h3>
+          <p style="font-size:0.82rem;">Ventricular rhythm anomaly → <span class="badge red">Critical</span></p>
+        </div>
+        <div class="timeline-item">
+          <h3 style="font-size:0.9rem;color:var(--warning);">Troponin Spike</h3>
+          <p style="font-size:0.82rem;">&gt; 0.4 ng/mL (10× normal) → <span class="badge red">Critical</span></p>
+        </div>
+        <div class="timeline-item">
+          <h3 style="font-size:0.9rem;color:var(--accent);">HF Severity</h3>
+          <p style="font-size:0.82rem;">BNP + Killip class → None / Mild / Moderate / Severe</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 8 — TECHNICAL / AGGREGATION ==================== -->
+<div class="slide" data-slide="8">
+  <span class="slide-number">08 / 10</span>
+  <div class="tag">Technical</div>
+  <h2>Time-Series Analysis &amp; <span class="hl">Pattern Recognition</span></h2>
+  <div class="two-col">
+    <div>
+      <h3 style="margin-bottom:1rem;color:var(--accent);">24h Time-Series Pipeline</h3>
+      <div class="code-block" style="font-size:0.78rem;"><span class="cm"># MongoDB Aggregation — database.py</span>
+pipeline = [
+  {<span class="str">"$match"</span>: {
+    <span class="str">"patient_id"</span>: patient_id,
+    <span class="str">"timestamp"</span>: {<span class="str">"$gte"</span>: cutoff_24h}
+  }},
+  {<span class="str">"$sort"</span>: {<span class="str">"timestamp"</span>: <span class="num">1</span>}},
+  {<span class="str">"$project"</span>: {
+    <span class="str">"_id"</span>: <span class="num">0</span>,
+    <span class="str">"timestamp"</span>: <span class="num">1</span>,
+    <span class="str">"heart_rate"</span>: <span class="num">1</span>,
+    <span class="str">"systolic_bp"</span>: <span class="num">1</span>,
+    <span class="str">"ecg_rhythm"</span>: <span class="num">1</span>,
+    <span class="str">"troponin_level"</span>: <span class="num">1</span>
+  }}
+]</div>
+      <p style="margin-top:1rem;font-size:0.88rem;">
+        This pipeline feeds the Streamlit line charts — allowing ICU staff to see if a patient's
+        heart rate and blood pressure are stabilizing or deteriorating over time.
+      </p>
+    </div>
+    <div>
+      <h3 style="margin-bottom:1rem;color:var(--warning);">Arrhythmia Pattern Recognition</h3>
+      <div class="code-block" style="font-size:0.78rem;"><span class="cm"># Pattern aggregation — database.py</span>
+pipeline = [
+  {<span class="str">"$match"</span>: {
+    <span class="str">"severity"</span>: {
+      <span class="str">"$in"</span>: [<span class="str">"Medium"</span>,<span class="str">"High"</span>,<span class="str">"Critical"</span>]
+    }
+  }},
+  {<span class="str">"$group"</span>: {
+    <span class="str">"_id"</span>: {
+      <span class="str">"type"</span>: <span class="str">"$type"</span>,
+      <span class="str">"severity"</span>: <span class="str">"$severity"</span>
+    },
+    <span class="str">"count"</span>: {<span class="str">"$sum"</span>: <span class="num">1</span>},
+    <span class="str">"latest"</span>: {<span class="str">"$max"</span>: <span class="str">"$timestamp"</span>},
+    <span class="str">"rules"</span>: {<span class="str">"$addToSet"</span>: <span class="str">"$detection_rule"</span>}
+  }},
+  {<span class="str">"$sort"</span>: {<span class="str">"count"</span>: <span class="num">-1</span>}}
+]</div>
+      <p style="margin-top:1rem;font-size:0.88rem;">
+        Groups arrhythmia alerts by type and severity, counts occurrences, and identifies
+        <strong style="color:#f1f5f9;">recurring patterns</strong> — valuable for long-term treatment planning.
+      </p>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 9 — DATABASE SCHEMA + UI ==================== -->
+<div class="slide" data-slide="9">
+  <span class="slide-number">09 / 10</span>
+  <div class="tag">Schema &amp; Interface</div>
+  <h2>Database Schema &amp; <span class="hl">Dashboard UI</span></h2>
+  <div class="two-col">
+    <div>
+      <h3 style="margin-bottom:1rem;">MongoDB Collections — 1 : N Relationship</h3>
+      <div class="schema-box">
+        <div class="entity" style="width:100%;margin-bottom:1rem;">
+          <div class="ename">🧑‍⚕️ Patient</div>
+          <div class="field"><span class="pk">_id : ObjectId (PK)</span></div>
+          <div class="field">name : <span class="type">String</span></div>
+          <div class="field">age : <span class="type">Int</span></div>
+          <div class="field">risk_factors : <span class="type">Array&lt;String&gt;</span></div>
+        </div>
+        <div style="text-align:center;color:var(--primary);font-size:1.2rem;margin:0.3rem 0;">
+          ┃ 1 : N
+        </div>
+        <div class="entity" style="width:100%;margin-bottom:1rem;">
+          <div class="ename">📊 CardiacTelemetry</div>
+          <div class="field"><span class="pk">_id : ObjectId (PK)</span></div>
+          <div class="field">patient_id : <span class="type">String (FK)</span></div>
+          <div class="field">ecg_rhythm, heart_rate, BP : <span class="type">Mixed</span></div>
+          <div class="field">troponin_level, bnp_level : <span class="type">Float</span></div>
+          <div class="field">scoring : <span class="type">{} Embedded Doc</span></div>
+          <div class="field">hemodynamic_status : <span class="type">String</span></div>
+          <div class="field">timestamp : <span class="type">DateTime</span></div>
+        </div>
+        <div class="grid grid-2" style="gap:0.6rem;">
+          <div class="entity" style="width:100%;margin:0;">
+            <div class="ename">🚨 Arrhythmias</div>
+            <div class="field">type · severity</div>
+            <div class="field">detection_rule</div>
+          </div>
+          <div class="entity" style="width:100%;margin:0;">
+            <div class="ename">💓 Hemodynamics</div>
+            <div class="field">BP · heart_rate</div>
+            <div class="field">status</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:1rem;">Streamlit Dashboard</h3>
+      <div class="card" style="margin-bottom:1rem;">
+        <h3 style="font-size:0.9rem;color:var(--accent);">📈 Real-Time Trend Charts</h3>
+        <p style="font-size:0.85rem;">Line charts for HR, Systolic BP, and Troponin over the last 24 hours — showing stabilization or deterioration trends.</p>
+      </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <h3 style="font-size:0.9rem;color:var(--danger);">🔔 Alert Panel</h3>
+        <p style="font-size:0.85rem;">High &amp; Critical severity alerts displayed prominently with color-coded severity badges and detection rule explanations.</p>
+      </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <h3 style="font-size:0.9rem;color:var(--primary);">📋 Patient Assessment View</h3>
+        <p style="font-size:0.85rem;">Latest HEART / TIMI / GRACE scores, hemodynamic status, STEMI flag, and Heart Failure severity in a single glance.</p>
+      </div>
+      <div class="card">
+        <h3 style="font-size:0.9rem;color:var(--warning);">📊 Pattern Analytics</h3>
+        <p style="font-size:0.85rem;">Recurring arrhythmia types aggregated and visualized — identify the most common anomalies across all patients.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+<!-- ==================== SLIDE 10 — CONCLUSION ==================== -->
+<div class="slide" data-slide="10">
+  <span class="slide-number">10 / 10</span>
+  <div class="tag">Conclusion</div>
+  <h2>Conclusion &amp; <span class="hl">Future Scope</span></h2>
+  <div class="two-col">
+    <div>
+      <h3 style="color:var(--accent);margin-bottom:1rem;">✅ What We Built</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <p style="font-size:0.9rem;"><strong style="color:#f1f5f9;">Clinical Decision Support</strong> — not just data storage, but active medical intelligence</p>
+        </div>
+        <div class="timeline-item">
+          <p style="font-size:0.9rem;"><strong style="color:#f1f5f9;">3 Scoring Engines</strong> — HEART, TIMI, GRACE computed on every vitals entry</p>
+        </div>
+        <div class="timeline-item">
+          <p style="font-size:0.9rem;"><strong style="color:#f1f5f9;">Real-Time Arrhythmia Detection</strong> — STEMI, AFib, V-Tach, V-Fib, Tachy/Bradycardia</p>
+        </div>
+        <div class="timeline-item">
+          <p style="font-size:0.9rem;"><strong style="color:#f1f5f9;">MongoDB Aggregation</strong> — time-series analysis &amp; pattern recognition pipelines</p>
+        </div>
+        <div class="timeline-item">
+          <p style="font-size:0.9rem;"><strong style="color:#f1f5f9;">Full-Stack Architecture</strong> — FastAPI + MongoDB + Streamlit with async operations</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="color:var(--warning);margin-bottom:1rem;">🚀 Future Scope</h3>
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="icon">⌚</div>
+        <h3>Wearable IoT Integration</h3>
+        <p style="font-size:0.85rem;">Connect Apple Watch, Fitbit, and medical-grade wearables for continuous cardiac monitoring outside the ICU.</p>
+      </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="icon green">🤖</div>
+        <h3>AI-Driven Predictive Analytics</h3>
+        <p style="font-size:0.85rem;">Machine learning models for early cardiac event prediction — detect STEMI risk 30 minutes before onset.</p>
+      </div>
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="icon yellow">📡</div>
+        <h3>HL7 FHIR Interoperability</h3>
+        <p style="font-size:0.85rem;">Standardized health data exchange with Hospital Information Systems and Electronic Health Records.</p>
+      </div>
+      <div class="card">
+        <div class="icon red">📱</div>
+        <h3>Mobile Alert System</h3>
+        <p style="font-size:0.85rem;">Push notifications to on-call cardiologists when critical arrhythmias are detected.</p>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:2rem;">
+    <span class="heartbeat" style="font-size:2rem;">❤️</span>
+    <p style="color:#f1f5f9;font-weight:600;font-size:1.1rem;margin-top:0.5rem;">Thank You</p>
+    <p style="font-size:0.85rem;">Module 27 — Cardiac ICU Monitoring Database System</p>
+  </div>
+  <div class="footer-brand">Cardiac ICU — DBMS Module 27</div>
+</div>
+
+</div><!-- /deck -->
+
+<!-- PROGRESS BAR -->
+<div class="progress-bar" id="progressBar" style="width:10%"></div>
+
+<!-- NAVIGATION -->
+<div class="nav">
+  <button onclick="prevSlide()" title="Previous (← / ↑)">‹</button>
+  <button onclick="nextSlide()" title="Next (→ / ↓ / Space)">›</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+  const total = slides.length;
+
+  function showSlide(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    slides[current].classList.add('exit');
+    setTimeout(() => slides[current].classList.remove('exit'), 500);
+    current = n;
+    slides[current].classList.add('active');
+    document.getElementById('progressBar').style.width = ((current + 1) / total * 100) + '%';
+  }
+
+  function nextSlide() { showSlide(current + 1); }
+  function prevSlide() { showSlide(current - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevSlide(); }
+    if (e.key === 'Home') { e.preventDefault(); showSlide(0); }
+    if (e.key === 'End') { e.preventDefault(); showSlide(total - 1); }
+  });
+
+  /* Touch swipe support */
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+  document.addEventListener('touchend', e => {
+    const diff = e.changedTouches[0].screenX - touchStartX;
+    if (Math.abs(diff) > 50) { diff < 0 ? nextSlide() : prevSlide(); }
+  });
+</script>
+
+</body>
+</html>
